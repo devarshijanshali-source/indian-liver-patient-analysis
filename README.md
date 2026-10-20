@@ -50,12 +50,14 @@ feature columns.
 
 The script creates an `output` folder containing:
 
-- `cleaned_liver_dataset.csv` — cleaned records with the disease outcome column
-- `analysis_report.txt` — cleaning summary, descriptive statistics, class counts,
-  and potential outlier counts
-- PNG charts — disease-class distribution, age and gender distributions,
-  bilirubin boxplot, albumin by disease class, numeric-feature correlation
-  heatmap, and age vs. bilirubin
+- `cleaned_liver_data.csv` — cleaned records with the disease outcome column
+- `analysis_report.txt` — dataset shape, missing-value and duplicate counts,
+  column types, numeric summary, outlier counts, class comparisons, and
+  data-derived written observations
+- Eight PNG charts — class counts, age distribution, gender distribution,
+  total bilirubin by patient group, numeric correlation heatmap, total vs.
+  direct bilirubin scatter plot, albumin violin plot by patient group, and
+  age vs. total bilirubin
 
 Generated output and the local Python virtual environment are excluded from Git.
 Run the script to recreate them.
