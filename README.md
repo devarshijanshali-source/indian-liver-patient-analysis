@@ -37,7 +37,18 @@ Streamlit opens the dashboard in your browser (usually at
 records, and download buttons. You can optionally upload a CSV with the required
 feature columns.
 
-## Publish the website for others
+## Public GitHub Pages website
+
+The repository also includes a static website in `index.html`. It runs directly
+on GitHub Pages without a Python server and processes uploaded CSV data locally
+in the visitor's browser:
+
+`https://devarshijanshali-source.github.io/indian-liver-patient-analysis/`
+
+The Python/Streamlit dashboard remains available for running the interactive
+Python version locally or hosting it on Streamlit Community Cloud.
+
+## Publish the Streamlit website for others
 
 1. Push the project files, including `app.py`, `requirements.txt`, and
    `indian_liver_patient.csv`, to a public GitHub repository.

@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123b42">
+  <meta name="description" content="Interactive exploratory analysis of the Indian Liver Patient Records dataset.">
+  <title>Liver Patient Data Explorer</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172f36;
+      --muted: #687d7c;
+      --teal: #167b70;
+      --line: #e2ece9;
+      --paper: #fff;
+      --canvas: #f3f7f6;
+      --mint: #e8f2ef;
+      --shadow: 0 10px 30px rgba(22, 62, 58, .055);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 91% 0, rgba(38, 148, 125, .1), transparent 28rem),
+        var(--canvas);
+      font-family: "DM Sans", sans-serif;
+    }
+    button, input { font: inherit; }
+    .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 30px 0 50px; }
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 38px 42px;
+      color: #f3fbf9;
+      background: linear-gradient(118deg, #123b42, #146c68 58%, #22947d);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 26px;
+      box-shadow: 0 18px 42px rgba(23, 74, 70, .16);
+    }
+    .hero:after {
+      position: absolute;
+      top: -120px;
+      right: -15px;
+      width: 340px;
+      height: 340px;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 50%;
+      box-shadow: 0 0 0 38px rgba(255,255,255,.035), 0 0 0 78px rgba(255,255,255,.025);
+      content: "";
+      pointer-events: none;
+    }
+    .eyebrow { color: #b9e5d8; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+    h1, h2, h3 { font-family: "Manrope", sans-serif; }
+    .hero h1 { position: relative; z-index: 1; max-width: 620px; margin: 13px 0 9px; color: white; font-size: clamp(34px, 5vw, 53px); line-height: 1.08; letter-spacing: -.045em; }
+    .hero p { position: relative; z-index: 1; max-width: 610px; margin: 0; color: #d8ece8; font-size: 16px; line-height: 1.7; }
+    .hero-note { position: relative; z-index: 1; margin-top: 22px; color: #c2e8df; font-size: 12px; }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 20px 0; }
+    .source-label { margin-right: auto; color: var(--muted); font-size: 13px; }
+    .button, .upload-button {
+      display: inline-flex;
+      min-height: 41px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 15px;
+      color: #fff;
+      background: var(--teal);
+      border: 1px solid var(--teal);
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .button:hover, .upload-button:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(22,123,112,.2); }
+    .button.secondary, .upload-button { color: #24635d; background: #fff; border-color: var(--line); }
+    #file-input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; margin: 0 0 20px; }
+    .metric, .card {
+      background: rgba(255,255,255,.94);
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      box-shadow: var(--shadow);
+    }
+    .metric { min-height: 105px; padding: 18px 19px; }
+    .metric-label { color: var(--muted); font-size: 12px; font-weight: 600; }
+    .metric-value { margin-top: 8px; font-family: "Manrope", sans-serif; font-size: 30px; font-weight: 800; letter-spacing: -.045em; }
+    .metric-hint { margin-top: 2px; color: #81918f; font-size: 11px; }
+    .notice { margin: 0 0 21px; padding: 13px 16px; color: #765619; background: #fff8e8; border: 1px solid #f1e3bd; border-radius: 12px; font-size: 13px; line-height: 1.55; }
+    .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 28px 2px 14px; }
+    .section-heading h2 { margin: 0; font-size: 22px; letter-spacing: -.035em; }
+    .section-heading p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+    .chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
+    .card { min-width: 0; padding: 19px; }
+    .card h3 { margin: 0; font-size: 15px; letter-spacing: -.02em; }
+    .card .sub { margin: 5px 0 14px; color: var(--muted); font-size: 12px; }
+    .chart-wrap { position: relative; min-height: 235px; }
+    .chart-wrap canvas { max-width: 100%; }
+    .svg-chart { display: block; width: 100%; height: 245px; overflow: visible; }
+    .findings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .finding { min-height: 57px; padding: 12px 13px; background: #f5f9f8; border: 1px solid #e8f0ee; border-radius: 11px; color: #334f4c; font-size: 13px; line-height: 1.55; }
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .summary-grid h3 { margin: 0 0 12px; font-size: 15px; }
+    .table-wrap { max-height: 410px; overflow: auto; border: 1px solid var(--line); border-radius: 11px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { padding: 8px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid #edf2f1; }
+    th { position: sticky; top: 0; z-index: 1; color: #49635f; background: #edf4f2; font-weight: 700; }
+    th:first-child, td:first-child { text-align: left; }
+    .heat td { min-width: 52px; text-align: center; }
+    .footer { margin-top: 25px; padding: 17px 4px 0; color: var(--muted); border-top: 1px solid var(--line); font-size: 11px; line-height: 1.7; }
+    .error { display: none; margin: 16px 0; padding: 13px 15px; color: #8d2c28; background: #fff0ee; border: 1px solid #f1d2cd; border-radius: 11px; font-size: 13px; }
+    .loading { padding: 35px 0; color: var(--muted); text-align: center; }
+    @media (max-width: 760px) {
+      .shell { width: min(100% - 24px, 620px); padding-top: 12px; }
+      .hero { padding: 28px 23px; border-radius: 19px; }
+      .hero:after { right: -220px; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+      .metric { min-height: 92px; padding: 14px; }
+      .metric-value { font-size: 25px; }
+      .chart-grid, .summary-grid { grid-template-columns: 1fr; }
+      .findings-grid { grid-template-columns: 1fr; }
+      .source-label { width: 100%; }
+      .button, .upload-button { flex: 1; }
+      .section-heading { align-items: start; flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div class="eyebrow">Indian Liver Patient Records · Data Explorer</div>
+      <h1>Liver health,<br>seen through data.</h1>
+      <p>Explore patient measurements, compare outcome groups, and discover patterns in this dataset through an interactive visual dashboard.</p>
+      <div class="hero-note">Educational data analysis · Not a medical diagnostic tool</div>
+    </header>
+
+    <div class="toolbar">
+      <div class="source-label" id="source-label">Loading the included dataset…</div>
+      <label class="upload-button" for="file-input">Upload a CSV</label>
+      <input id="file-input" type="file" accept=".csv,text/csv">
+      <button class="button secondary" id="reset-button" type="button">Use included data</button>
+      <button class="button" id="download-button" type="button">Download cleaned CSV</button>
+      <button class="button secondary" id="report-button" type="button">Download report</button>
+    </div>
+    <div class="error" id="error" role="alert"></div>
+    <div class="loading" id="loading">Preparing the analysis…</div>
+    <div id="dashboard" hidden>
+      <section class="metrics" id="metrics" aria-label="Dataset overview"></section>
+      <div class="notice">This project is for educational data analysis only. It does not provide medical advice or diagnoses. Unusual measurements are flagged for review and are never automatically removed.</div>
+
+      <div class="section-heading">
+        <div><h2>Explore the dataset</h2><p>Eight visualizations from the project report.</p></div>
+      </div>
+      <section class="chart-grid" aria-label="Data visualizations">
+        <article class="card"><h3 id="group-chart-title">Patient groups</h3><p class="sub" id="group-chart-subtitle">Records per outcome class</p><div class="chart-wrap"><canvas id="class-chart" aria-label="Patient group counts"></canvas></div></article>
+        <article class="card"><h3>Age distribution</h3><p class="sub">Number of records in each age range</p><div class="chart-wrap"><canvas id="age-chart" aria-label="Age distribution"></canvas></div></article>
+        <article class="card"><h3>Gender distribution</h3><p class="sub">Patients represented in the dataset</p><div class="chart-wrap"><canvas id="gender-chart" aria-label="Gender distribution"></canvas></div></article>
+        <article class="card"><h3>Total bilirubin by patient group</h3><p class="sub">Median, middle 50%, whiskers, and flagged observations</p><div id="bilirubin-box" class="chart-wrap"></div></article>
+        <article class="card"><h3>Correlation heatmap</h3><p class="sub">Pearson correlation across numeric measurements and outcome code</p><div class="table-wrap" id="heatmap"></div></article>
+        <article class="card"><h3>Total vs. direct bilirubin</h3><p class="sub">Each point is one patient record, colored by outcome class</p><div class="chart-wrap"><canvas id="bilirubin-scatter" aria-label="Total bilirubin and direct bilirubin scatter plot"></canvas></div></article>
+        <article class="card"><h3>Albumin by patient group</h3><p class="sub">Violin density with quartile markers</p><div id="albumin-violin" class="chart-wrap"></div></article>
+        <article class="card"><h3>Age vs. total bilirubin</h3><p class="sub">Each point is one patient record</p><div class="chart-wrap"><canvas id="age-bilirubin" aria-label="Age and total bilirubin scatter plot"></canvas></div></article>
+      </section>
+
+      <div class="section-heading"><div><h2>What the data shows</h2><p>Observations calculated from the currently selected dataset.</p></div></div>
+      <section class="card"><div class="findings-grid" id="findings"></div></section>
+
+      <div class="section-heading"><div><h2>Data quality &amp; summary</h2><p>Cleaning decisions and descriptive statistics.</p></div></div>
+      <section class="summary-grid">
+        <article class="card"><h3>Missing values &amp; data types</h3><div class="table-wrap" id="quality-table"></div></article>
+        <article class="card"><h3>Numeric feature summary</h3><div class="table-wrap" id="describe-table"></div></article>
+      </section>
+      <div class="section-heading"><div><h2>Cleaned records</h2><p>Preview of up to 50 cleaned rows. Download the full cleaned CSV above.</p></div></div>
+      <section class="card"><div class="table-wrap" id="data-table"></div></section>
+    </div>
+    <footer class="footer">Dataset: Indian Liver Patient Records. Outcome codes: 1 = liver disease; 2 = no liver disease. This is an educational project, not a medical diagnostic tool. Uploaded CSVs are processed in your browser and are not sent to a server.</footer>
+  </main>
+  <script>
+    "use strict";
+    const COLORS = { teal: "#167b70", green: "#52a88c", amber: "#e5a84b", ink: "#415b58", grid: "#e8efed", red: "#d27865" };
+    const FEATURE_COLUMNS = ["Age", "Total_Bilirubin", "Direct_Bilirubin", "Alkaline_Phosphotase", "Alamine_Aminotransferase", "Aspartate_Aminotransferase", "Total_Protiens", "Albumin", "Albumin_and_Globulin_Ratio"];
+    const NUMERIC_COLUMNS = [...FEATURE_COLUMNS, "Dataset"];
+    let analysis = null;
+    let chartInstances = [];
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [], cell = "", quoted = false;
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        if (quoted) {
+          if (char === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+          else if (char === '"') quoted = false;
+          else cell += char;
+        } else if (char === '"' && cell === "") quoted = true;
+        else if (char === ",") { row.push(cell.trim()); cell = ""; }
+        else if (char === "\n") { row.push(cell.trim()); if (row.some(value => value !== "")) rows.push(row); row = []; cell = ""; }
+        else if (char !== "\r") cell += char;
+      }
+      row.push(cell.trim());
+      if (row.some(value => value !== "")) rows.push(row);
+      if (!rows.length) throw new Error("The CSV is empty.");
+      const headers = rows[0].map(value => value.replace(/^\uFEFF/, "").trim());
+      const missing = ["Gender", ...FEATURE_COLUMNS].filter(name => !headers.includes(name));
+      if (missing.length) throw new Error("Missing required columns: " + missing.join(", "));
+      return rows.slice(1).map((values, index) => {
+        if (values.length !== headers.length) throw new Error(`CSV row ${index + 2} has ${values.length} values; expected ${headers.length}.`);
+        return Object.fromEntries(headers.map((header, position) => [header, values[position]]));
+      });
+    }
+
+    function percentile(values, fraction) {
+      const sorted = [...values].sort((a, b) => a - b);
+      if (!sorted.length) return NaN;
+      const position = (sorted.length - 1) * fraction;
+      const lower = Math.floor(position), upper = Math.ceil(position);
+      return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
+    }
+
+    function analyzeRows(sourceRows) {
+      if (!sourceRows.length) throw new Error("The CSV has headers but no patient records.");
+      const columns = Object.keys(sourceRows[0]);
+      const outcomeAvailable = columns.includes("Dataset");
+      const missing = Object.fromEntries(columns.map(name => [name, sourceRows.filter(row => row[name] === "" || row[name] == null).length]));
+      const duplicateKeys = new Set();
+      const uniqueRows = sourceRows.filter(row => {
+        const key = JSON.stringify(columns.map(column => row[column]));
+        if (duplicateKeys.has(key)) return false;
+        duplicateKeys.add(key);
+        return true;
+      });
+      const rows = uniqueRows.map((source, index) => {
+        const row = { ...source, _originalIndex: index };
+        for (const column of FEATURE_COLUMNS) {
+          const parsed = Number(row[column]);
+          row[column] = row[column] === "" || !Number.isFinite(parsed) ? null : parsed;
+        }
+        if (outcomeAvailable) {
+          const label = Number(row.Dataset);
+          if (![1, 2].includes(label)) throw new Error(`Dataset outcome must be 1 or 2; found "${row.Dataset}".`);
+          row.Dataset = label;
+        }
+        row.Gender = row.Gender || "Unknown";
+        return row;
+      });
+      for (const column of FEATURE_COLUMNS) {
+        const valid = rows.map(row => row[column]).filter(Number.isFinite);
+        if (valid.length === 0 && rows.some(row => row[column] == null)) throw new Error(`Column ${column} has no numeric values to fill missing entries.`);
+        const median = percentile(valid, .5);
+        for (const row of rows) if (row[column] == null) row[column] = median;
+      }
+      const outliers = Object.fromEntries(FEATURE_COLUMNS.map(column => {
+        const values = rows.map(row => row[column]);
+        const q1 = percentile(values, .25), q3 = percentile(values, .75), iqr = q3 - q1;
+        return [column, values.filter(value => value < q1 - 1.5 * iqr || value > q3 + 1.5 * iqr).length];
+      }));
+      return { sourceRows, rows, columns, missing, duplicateCount: sourceRows.length - rows.length, outliers, outcomeAvailable };
+    }
+
+    function esc(value) {
+      return String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+    }
+    function fmt(value, digits = 2) { return Number.isFinite(value) ? value.toLocaleString("en-US", { maximumFractionDigits: digits }) : "—"; }
+    function byClass(label) { return label === 1 ? "Liver disease" : "No liver disease"; }
+    function countsBy(rows, key) {
+      return rows.reduce((counts, row) => { const value = row[key]; counts[value] = (counts[value] || 0) + 1; return counts; }, {});
+    }
+    function chartBase() {
+      return { responsive: true, maintainAspectRatio: false, animation: { duration: 300 }, plugins: { legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8, color: COLORS.ink, font: { family: "DM Sans", size: 11 } } }, tooltip: { backgroundColor: "#173f43", padding: 10, titleFont: { family: "DM Sans" }, bodyFont: { family: "DM Sans" } } }, scales: { x: { grid: { display: false }, ticks: { color: COLORS.ink, font: { family: "DM Sans", size: 10 } }, border: { display: false } }, y: { beginAtZero: true, grid: { color: COLORS.grid }, ticks: { color: COLORS.ink, font: { family: "DM Sans", size: 10 } }, border: { display: false } } } };
+    }
+    function addChart(id, config) {
+      if (!window.Chart) return;
+      chartInstances.push(new Chart(document.getElementById(id), config));
+    }
+    function histogram(values, bins = 16) {
+      const min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
+      const counts = Array(bins).fill(0);
+      values.forEach(value => counts[Math.min(bins - 1, Math.floor((value - min) / span * bins))]++);
+      return { labels: counts.map((_, i) => `${Math.round(min + span * i / bins)}–${Math.round(min + span * (i + 1) / bins)}`), counts };
+    }
+    function boxPlot(container, rows) {
+      const groups = [1, 2].map(label => ({ label, values: rows.filter(row => row.Dataset === label).map(row => row.Total_Bilirubin) }));
+      const values = groups.flatMap(group => group.values);
+      const min = Math.min(...values), max = Math.max(...values), top = 24, bottom = 198, left = 64, right = 636;
+      const capMin = Math.max(0, min), capMax = max;
+      const y = value => bottom - (value - capMin) / (capMax - capMin || 1) * (bottom - top);
+      let svg = `<svg class="svg-chart" viewBox="0 0 680 245" role="img" aria-label="Total bilirubin box plots by patient group">`;
+      for (let tick = 0; tick <= 4; tick++) {
+        const value = capMin + (capMax - capMin) * tick / 4, yy = y(value);
+        svg += `<line x1="${left}" y1="${yy}" x2="${right}" y2="${yy}" stroke="${COLORS.grid}"/><text x="55" y="${yy + 4}" text-anchor="end" fill="${COLORS.ink}" font-size="10">${fmt(value, 1)}</text>`;
+      }
+      groups.forEach((group, index) => {
+        if (!group.values.length) return;
+        const values = group.values, q1 = percentile(values, .25), med = percentile(values, .5), q3 = percentile(values, .75);
+        const iqr = q3 - q1, low = Math.max(Math.min(...values), q1 - 1.5 * iqr), high = Math.min(Math.max(...values), q3 + 1.5 * iqr);
+        const x = 232 + index * 245, boxTop = y(q3), boxBottom = y(q1);
+        svg += `<line x1="${x}" y1="${y(high)}" x2="${x}" y2="${y(low)}" stroke="${COLORS.teal}" stroke-width="2"/><line x1="${x-34}" y1="${y(high)}" x2="${x+34}" y2="${y(high)}" stroke="${COLORS.teal}" stroke-width="2"/><line x1="${x-34}" y1="${y(low)}" x2="${x+34}" y2="${y(low)}" stroke="${COLORS.teal}" stroke-width="2"/><rect x="${x-48}" y="${boxTop}" width="96" height="${Math.max(2,boxBottom-boxTop)}" rx="5" fill="${index ? "rgba(82,168,140,.25)" : "rgba(22,123,112,.22)"}" stroke="${COLORS.teal}" stroke-width="2"/><line x1="${x-48}" y1="${y(med)}" x2="${x+48}" y2="${y(med)}" stroke="#123b42" stroke-width="3"/><text x="${x}" y="222" text-anchor="middle" fill="${COLORS.ink}" font-size="11">${byClass(group.label)}</text>`;
+        values.filter(value => value < low || value > high).forEach(value => { svg += `<circle cx="${x + ((value * 37) % 42) - 21}" cy="${y(value)}" r="2.5" fill="${COLORS.red}" opacity=".65"><title>Potential outlier: ${fmt(value)}</title></circle>`; });
+      });
+      svg += `<text x="${(left+right)/2}" y="242" text-anchor="middle" fill="${COLORS.muted}" font-size="10">Total bilirubin</text></svg>`;
+      container.innerHTML = svg;
+    }
+    function violinChart(container, rows) {
+      const groups = [1,2].map(label => rows.filter(row => row.Dataset === label).map(row => row.Albumin));
+      const all = groups.flat(), low = Math.min(...all), high = Math.max(...all), span = high - low || 1;
+      const top = 22, bottom = 199, centers = [240, 445], maxWidth = 76, steps = 54;
+      let svg = `<svg class="svg-chart" viewBox="0 0 680 245" role="img" aria-label="Albumin distribution violin plots by patient group">`;
+      for (let tick=0; tick<=4; tick++) {
+        const value = low + span*tick/4, yy = bottom - (value-low)/span*(bottom-top);
+        svg += `<line x1="78" y1="${yy}" x2="620" y2="${yy}" stroke="${COLORS.grid}"/><text x="68" y="${yy+4}" text-anchor="end" fill="${COLORS.ink}" font-size="10">${fmt(value,1)}</text>`;
+      }
+      groups.forEach((values,index) => {
+        const mean = values.reduce((sum,value)=>sum+value,0)/values.length;
+        const sd = Math.sqrt(values.reduce((sum,value)=>sum+(value-mean)**2,0)/values.length) || span/10;
+        const bandwidth = Math.max(span/45, sd*.22);
+        const density = value => values.reduce((sum,item)=>sum+Math.exp(-.5*((value-item)/bandwidth)**2),0)/values.length;
+        const densities = Array.from({length:steps+1},(_,i)=>density(low+span*i/steps));
+        const maxDensity = Math.max(...densities) || 1, x = centers[index];
+        const leftPath = [], rightPath = [];
+        densities.forEach((d,i)=>{const yy=bottom-i/steps*(bottom-top),w=d/maxDensity*maxWidth;leftPath.push(`${x-w},${yy}`);rightPath.unshift(`${x+w},${yy}`);});
+        svg += `<path d="M ${leftPath.join(" L ")} L ${rightPath.join(" L ")} Z" fill="${index ? "rgba(82,168,140,.28)" : "rgba(22,123,112,.25)"}" stroke="${COLORS.teal}" stroke-width="1.5"/>`;
+        const q1=percentile(values,.25),med=percentile(values,.5),q3=percentile(values,.75),toY=value=>bottom-(value-low)/span*(bottom-top);
+        svg += `<line x1="${x}" y1="${toY(q1)}" x2="${x}" y2="${toY(q3)}" stroke="#123b42" stroke-width="2"/><line x1="${x-14}" y1="${toY(med)}" x2="${x+14}" y2="${toY(med)}" stroke="#123b42" stroke-width="4"/><text x="${x}" y="222" text-anchor="middle" fill="${COLORS.ink}" font-size="11">${byClass(index+1)}</text>`;
+      });
+      svg += "</svg>";
+      container.innerHTML = svg;
+    }
+    function makeTable(headers, rows) {
+      return `<table><thead><tr>${headers.map(header=>`<th>${esc(header)}</th>`).join("")}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(value=>`<td>${esc(value)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    }
+    function stats(values) {
+      const sorted=[...values].sort((a,b)=>a-b),count=sorted.length;
+      const mean=sorted.reduce((sum,value)=>sum+value,0)/count;
+      const variance=sorted.reduce((sum,value)=>sum+(value-mean)**2,0)/count;
+      return {count,mean,std:Math.sqrt(variance),min:sorted[0],q1:percentile(sorted,.25),median:percentile(sorted,.5),q3:percentile(sorted,.75),max:sorted[count-1]};
+    }
+    function writeObservations(data, corr) {
+      const rows=data.rows, classCounts=countsBy(rows,"Dataset"), genderCounts=countsBy(rows,"Gender");
+      const pairNames=[...FEATURE_COLUMNS,...(data.outcomeAvailable?["Dataset"]:[])];
+      const pairs=[];
+      for(let i=0;i<pairNames.length;i++)for(let j=i+1;j<pairNames.length;j++)pairs.push({value:corr[i][j],left:pairNames[i],right:pairNames[j]});
+      pairs.sort((a,b)=>Math.abs(b.value)-Math.abs(a.value));
+      const findings=[
+        `Median patient age is ${fmt(percentile(rows.map(row=>row.Age),.5),1)} years; records range from ${fmt(Math.min(...rows.map(row=>row.Age)),0)} to ${fmt(Math.max(...rows.map(row=>row.Age)),0)} years.`,
+        `${Object.entries(genderCounts).sort((a,b)=>b[1]-a[1])[0][0]} is the most frequently recorded gender (${Math.max(...Object.values(genderCounts))} of ${rows.length} records).`
+      ];
+      if(data.outcomeAvailable){
+        findings.push(`After removing duplicates, class 1 contains ${classCounts[1]||0} records and class 2 contains ${classCounts[2]||0}; class 1 is ${(100*(classCounts[1]||0)/rows.length).toFixed(1)}% of the cleaned dataset.`);
+        for(const column of ["Total_Bilirubin","Albumin"]){const a=percentile(rows.filter(row=>row.Dataset===1).map(row=>row[column]),.5),b=percentile(rows.filter(row=>row.Dataset===2).map(row=>row[column]),.5);findings.push(`Median ${column.replaceAll("_"," ").toLowerCase()} is ${fmt(a)} for class 1 and ${fmt(b)} for class 2.`);}
+      }
+      if(pairs.length)findings.push(`Strongest absolute pairwise numeric correlation: ${pairs[0].left.replaceAll("_"," ")} and ${pairs[0].right.replaceAll("_"," ")} (r = ${fmt(pairs[0].value,2)}).`);
+      findings.push("Potential IQR outliers are flagged for review. No unusual readings are automatically deleted.");
+      document.getElementById("findings").innerHTML=findings.map(item=>`<div class="finding">${esc(item)}</div>`).join("");
+      return findings;
+    }
+    function download(name, content, type) {
+      const url=URL.createObjectURL(new Blob([content],{type}));
+      const link=document.createElement("a");link.href=url;link.download=name;link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+    function render(data, sourceName) {
+      analysis=data;
+      chartInstances.forEach(chart=>chart.destroy());chartInstances=[];
+      const rows=data.rows, n=rows.length, outcome=data.outcomeAvailable;
+      document.getElementById("loading").hidden=true;
+      document.getElementById("dashboard").hidden=false;
+      document.getElementById("source-label").textContent=`Using ${sourceName} · ${data.sourceRows.length.toLocaleString()} source records`;
+      const classes=outcome?countsBy(rows,"Dataset"):{};
+      const genders=countsBy(rows,"Gender");
+      const missingTotal=Object.values(data.missing).reduce((sum,value)=>sum+value,0);
+      document.getElementById("metrics").innerHTML=[
+        ["Records analyzed",n.toLocaleString(),`${data.columns.length} columns in source`],
+        ["Duplicates removed",data.duplicateCount.toLocaleString(),"Exact duplicate rows"],
+        ["Missing values filled",missingTotal.toLocaleString(),"Numeric median imputation"],
+        ["Outcome classes",outcome?"2":"Unavailable",outcome?`${classes[1]||0} disease · ${classes[2]||0} no disease`:"Dataset column not present"]
+      ].map(item=>`<article class="metric"><div class="metric-label">${item[0]}</div><div class="metric-value">${item[1]}</div><div class="metric-hint">${item[2]}</div></article>`).join("");
+      if(!outcome)document.querySelector(".notice").textContent="No Dataset outcome column was found, so disease-class comparisons are unavailable. This dashboard is for educational data analysis only; it is not a medical diagnostic tool. Unusual measurements are flagged for review, never automatically removed.";
+      const base=chartBase();
+      const groupCounts=outcome?classes:genders;
+      const groupLabels=outcome?["Liver disease","No liver disease"]:Object.keys(genders);
+      document.getElementById("group-chart-title").textContent=outcome?"Patient groups":"Gender distribution";
+      document.getElementById("group-chart-subtitle").textContent=outcome?"Records per outcome class":"Patient records per gender (outcome column unavailable)";
+      addChart("class-chart",{type:"bar",data:{labels:groupLabels,datasets:[{data:outcome?[classes[1]||0,classes[2]||0]:groupLabels.map(label=>groupCounts[label]),backgroundColor:[COLORS.teal,COLORS.green],borderRadius:8,maxBarThickness:70}]},options:{...base,plugins:{...base.plugins,legend:{display:false}},scales:{...base.scales,y:{...base.scales.y,title:{display:true,text:"Patient records"}}}}});
+      const ages=histogram(rows.map(row=>row.Age));
+      addChart("age-chart",{type:"bar",data:{labels:ages.labels,datasets:[{data:ages.counts,backgroundColor:"rgba(22,123,112,.78)",borderRadius:4,barPercentage:1,categoryPercentage:1}]},options:{...base,plugins:{...base.plugins,legend:{display:false}},scales:{...base.scales,x:{...base.scales.x,ticks:{...base.scales.x.ticks,maxRotation:45,minRotation:35}}}}});
+      addChart("gender-chart",{type:"doughnut",data:{labels:Object.keys(genders),datasets:[{data:Object.values(genders),backgroundColor:[COLORS.teal,COLORS.green,COLORS.amber,"#9ab9b1"],borderWidth:0,hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:false,cutout:"66%",plugins:{legend:{position:"bottom",labels:{usePointStyle:true,boxWidth:8,color:COLORS.ink,font:{family:"DM Sans",size:11}}}}}});
+      if(outcome)boxPlot(document.getElementById("bilirubin-box"),rows);
+      else document.getElementById("bilirubin-box").innerHTML='<div class="notice">A patient outcome column is required for this group comparison.</div>';
+      const correlation=corrTableProxy(rows,outcome);
+      const scatterSets=[1,2].filter(label=>outcome&&rows.some(row=>row.Dataset===label)).map((label,index)=>({label:byClass(label),data:rows.filter(row=>row.Dataset===label).map(row=>({x:row.Total_Bilirubin,y:row.Direct_Bilirubin})),backgroundColor:index?COLORS.green:COLORS.teal,pointRadius:3,pointHoverRadius:5}));
+      if(!outcome)scatterSets.push({label:"Patient records",data:rows.map(row=>({x:row.Total_Bilirubin,y:row.Direct_Bilirubin})),backgroundColor:COLORS.teal,pointRadius:3});
+      addChart("bilirubin-scatter",{type:"scatter",data:{datasets:scatterSets},options:{...base,scales:{x:{...base.scales.x,type:"linear",title:{display:true,text:"Total bilirubin"}},y:{...base.scales.y,type:"linear",title:{display:true,text:"Direct bilirubin"}}}}});
+      if(outcome)violinChart(document.getElementById("albumin-violin"),rows);
+      else document.getElementById("albumin-violin").innerHTML='<div class="notice">A patient outcome column is required for this group comparison.</div>';
+      const ageSets=[1,2].filter(label=>outcome&&rows.some(row=>row.Dataset===label)).map((label,index)=>({label:byClass(label),data:rows.filter(row=>row.Dataset===label).map(row=>({x:row.Age,y:row.Total_Bilirubin})),backgroundColor:index?COLORS.green:COLORS.teal,pointRadius:3,pointHoverRadius:5}));
+      if(!outcome)ageSets.push({label:"Patient records",data:rows.map(row=>({x:row.Age,y:row.Total_Bilirubin})),backgroundColor:COLORS.teal,pointRadius:3});
+      addChart("age-bilirubin",{type:"scatter",data:{datasets:ageSets},options:{...base,scales:{x:{...base.scales.x,type:"linear",title:{display:true,text:"Age"}},y:{...base.scales.y,type:"linear",title:{display:true,text:"Total bilirubin"}}}}});
+      const findings=writeObservations(data,correlation);
+      const qualityRows=data.columns.map(column=>[column,data.missing[column]||0,NUMERIC_COLUMNS.includes(column)?"Numeric":column==="Gender"?"Categorical":"Outcome label"]);
+      document.getElementById("quality-table").innerHTML=makeTable(["Column","Missing","Expected type"],qualityRows);
+      const summary=FEATURE_COLUMNS.map(column=>{const s=stats(rows.map(row=>row[column]));return[column,s.count,fmt(s.mean),fmt(s.std),fmt(s.min),fmt(s.q1),fmt(s.median),fmt(s.q3),fmt(s.max)];});
+      document.getElementById("describe-table").innerHTML=makeTable(["Feature","Count","Mean","Std","Min","25%","Median","75%","Max"],summary);
+      document.getElementById("data-table").innerHTML=makeTable(data.columns.slice(0,11),rows.slice(0,50).map(row=>data.columns.slice(0,11).map(column=>row[column])));
+      document.getElementById("download-button").onclick=()=>download("cleaned_liver_data.csv",csvString(data.columns,rows),"text/csv;charset=utf-8");
+      document.getElementById("report-button").onclick=()=>download("analysis_report.txt",reportText(data,findings),"text/plain;charset=utf-8");
+    }
+    function corrTableProxy(rows,outcome){
+      const names=[...FEATURE_COLUMNS,...(outcome?["Dataset"]:[])];
+      const matrix=names.map(left=>names.map(right=>{const x=rows.map(row=>row[left]),y=rows.map(row=>row[right]),mx=x.reduce((a,b)=>a+b,0)/x.length,my=y.reduce((a,b)=>a+b,0)/y.length;let num=0,dx=0,dy=0;for(let i=0;i<x.length;i++){num+=(x[i]-mx)*(y[i]-my);dx+=(x[i]-mx)**2;dy+=(y[i]-my)**2;}return dx&&dy?num/Math.sqrt(dx*dy):0;}));
+      document.getElementById("heatmap").innerHTML=`<table class="heat"><thead><tr><th>Feature</th>${names.map(name=>`<th title="${esc(name)}">${esc(name.replaceAll("_"," "))}</th>`).join("")}</tr></thead><tbody>${matrix.map((values,i)=>`<tr><th>${esc(names[i].replaceAll("_"," "))}</th>${values.map(value=>{const alpha=(.08+Math.abs(value)*.3).toFixed(2),color=value>=0?"22,124,108":"204,105,84";return`<td style="background:rgba(${color},${alpha})">${fmt(value,2)}</td>`;}).join("")}</tr>`).join("")}</tbody></table>`;
+      return matrix;
+    }
+    function csvString(columns,rows){
+      const quote=value=>{const text=String(value??"");return/[",\r\n]/.test(text)?`"${text.replaceAll('"','""')}"`:text;};
+      return columns.map(quote).join(",")+"\r\n"+rows.map(row=>columns.map(column=>quote(row[column])).join(",")).join("\r\n")+"\r\n";
+    }
+    function reportText(data,findings){
+      const rows=data.rows;
+      const classes=data.outcomeAvailable?countsBy(rows,"Dataset"):{};
+      const quality=Object.entries(data.missing).map(([column,count])=>`${column}: ${count}`).join("\n");
+      const after=Object.entries(data.missing).map(([column])=>`${column}: 0`).join("\n");
+      const outliers=Object.entries(data.outliers).map(([column,count])=>`${column}: ${count}`).join("\n");
+      const desc=FEATURE_COLUMNS.map(column=>{const s=stats(rows.map(row=>row[column]));return`${column}: count=${s.count}, mean=${fmt(s.mean)}, std=${fmt(s.std)}, min=${fmt(s.min)}, median=${fmt(s.median)}, max=${fmt(s.max)}`;}).join("\n");
+      return`INDIAN LIVER PATIENT RECORDS — DATA ANALYSIS\n${"=".repeat(48)}\n\nSource data shape: (${data.sourceRows.length}, ${data.columns.length})\nDuplicate records removed: ${data.duplicateCount}\nRecords after cleaning: ${rows.length}\n\nMISSING VALUES BEFORE CLEANING\n${"-".repeat(48)}\n${quality}\n\nMISSING VALUES AFTER CLEANING\n${"-".repeat(48)}\n${after}\n\nNUMERIC FEATURE SUMMARY\n${"-".repeat(48)}\n${desc}\n\nOUTCOME COUNTS BEFORE DUPLICATE REMOVAL\n${"-".repeat(48)}\n${data.outcomeAvailable?`1 (liver disease): ${data.sourceRows.filter(row=>Number(row.Dataset)===1).length}\n2 (no liver disease): ${data.sourceRows.filter(row=>Number(row.Dataset)===2).length}`:"No Dataset outcome column available"}\n\nOUTCOME COUNTS AFTER CLEANING\n${"-".repeat(48)}\n${data.outcomeAvailable?`1 (liver disease): ${classes[1]||0}\n2 (no liver disease): ${classes[2]||0}`:"No Dataset outcome column available"}\n\nPOTENTIAL OUTLIERS (1.5 x IQR; retained, not removed)\n${"-".repeat(48)}\n${outliers}\n\nWRITTEN OBSERVATIONS\n${"-".repeat(48)}\n${findings.map(item=>"- "+item).join("\n")}\n\nVISUALIZATIONS\n${"-".repeat(48)}\nPatient group counts\nAge distribution\nGender distribution\nTotal bilirubin by patient group\nNumeric correlation heatmap\nTotal bilirubin vs direct bilirubin\nAlbumin violin plot by patient group\nAge vs total bilirubin\n\nThis educational analysis is not a medical diagnostic tool.\n`;
+    }
+    async function loadIncluded(){
+      document.getElementById("error").style.display="none";
+      document.getElementById("loading").hidden=false;
+      document.getElementById("dashboard").hidden=true;
+      try{
+        const response=await fetch("indian_liver_patient.csv");
+        if(!response.ok)throw new Error(`Could not load the included dataset (HTTP ${response.status}).`);
+        const rows=parseCsv(await response.text());
+        render(analyzeRows(rows),"included dataset");
+      }catch(error){showError(error);}
+    }
+    function showError(error){
+      document.getElementById("loading").hidden=true;
+      const node=document.getElementById("error");node.textContent=error.message;node.style.display="block";
+    }
+    document.getElementById("file-input").addEventListener("change",event=>{
+      const file=event.target.files?.[0];if(!file)return;
+      const reader=new FileReader();
+      reader.onload=()=>{try{render(analyzeRows(parseCsv(String(reader.result))),file.name);document.getElementById("error").style.display="none";}catch(error){showError(error);}};
+      reader.onerror=()=>showError(new Error("Could not read the selected CSV file."));
+      reader.readAsText(file);
+    });
+    document.getElementById("reset-button").addEventListener("click",loadIncluded);
+    loadIncluded();
+  </script>
+</body>
+</html>
