@@ -24,6 +24,28 @@ py -m venv .venv
 
 The project includes `indian_liver_patient.csv` and uses it by default.
 
+## Run the website locally
+
+From the project folder in CMD:
+
+```cmd
+.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+Streamlit opens the dashboard in your browser (usually at
+`http://localhost:8501`). The site shows the analysis, visualizations, cleaned
+records, and download buttons. You can optionally upload a CSV with the required
+feature columns.
+
+## Publish the website for others
+
+1. Push the project files, including `app.py`, `requirements.txt`, and
+   `indian_liver_patient.csv`, to a public GitHub repository.
+2. Sign in to [Streamlit Community Cloud](https://share.streamlit.io/) using
+   GitHub and choose **Create app**.
+3. Select the repository, `main` branch, and `app.py` as the main file.
+4. Deploy. Streamlit provides a shareable public URL for the website.
+
 ## Output
 
 The script creates an `output` folder containing:
